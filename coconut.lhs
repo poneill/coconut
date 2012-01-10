@@ -63,6 +63,10 @@ Let us begin by sketching a vector type which will allow us to
 simplify expressions later on.
 
 \begin{code}
+import Debug.Trace
+\end{code}
+
+\begin{code}
 data Vector = Vector Float Float deriving (Eq, Show)
 \end{code}
 
@@ -114,17 +118,22 @@ type Acceleration = Vector
 \end{code}
 
 \section{Model Definition}
+
+\subsection{Ligand concentration}
 We begin the modeling proper by defining the ligand concentration as a
 function of position.  For now, let us assume that that the ligand
-concentration is a simple linear function of displacement in the y
-axis.  This clearly biologically implausible, but will be tolerated
-for now in the interest in getting the model up and running.
+concentration is a simple function of distance from the point (10,10).
+This clearly biologically implausible, but will be tolerated for now
+in the interest in getting the model up and running.
 
 \begin{code}
+emitterLocation = Vector 10 10
 l :: Vector -> Float
-l (Vector x y) = y
+l (Vector x y) = sqrt ((x - x')**2 + (y - y')**2)
+                 where Vector x' y' = emitterLocation
 \end{code}
 
+\subsection{Cluster configuration}
 We now define the displacement of the cluster and its associated
 nodes.  Let's assume for the sake of concreteness that the cluster
 possesses 8 receptors spaced with radial symmetry about the cluster
@@ -158,6 +167,7 @@ where
 radius = 1
 \end{code}
 
+\subsection{Ligand-receptor binding}
 For now, let the total receptor capacity of the ith node be constant: 
 
 \begin{code}
@@ -180,9 +190,6 @@ constant K, so we arbitrarily let
 k = 1
 \end{code}
 
-As an aside, we should later revisit the value of this constant and
-check its plausibility.  
-
 Next we define a forcing function f which describes the force exerted
 by the ith node as a function of time:
 
@@ -194,10 +201,13 @@ f bf t = bf * (1 - cos(bf * t * timestep))
 
 \begin{code}
 ithForce :: Center -> Index -> Time -> Vector
-ithForce c i t = (f (ri v i) t) .* theta i 
-  where v = ithNode c i
+ithForce c i t    = magnitude .* direction
+  where v         = ithNode c i
+        magnitude = (f (ri v i) t)
+        direction = theta i 
 \end{code}
- 
+
+\subsection{Force balancing} 
 Now we are in a position to sum the forces acting on each node in
 order to obtain an expression for the force acting on the center of
 the cluster:
@@ -223,8 +233,38 @@ where m is the mass of the cluster:
 m = 1
 \end{code}
 
+\subsection{Iteration}
 Lastly let us write a simple step function that updates the
 displacement of the center of the cluster over a small timestep.
+Consider that we must describe the position of the cluster $s(t)$ as a
+function of time, given the acceleration function $s''(t)$.  To
+motivate our approach, recall that we may write:
+
+$$s(t + \Delta t) \approx s(t) + s'(t)\Delta t$$
+
+for $\Delta t$ sufficiently small.  This, alas, does not help since we
+do not know $s'(t)$ in general.  However we may appeal to the
+definition of the difference quotient and write:
+
+$$s'(t) \approx \frac{s(t + \Delta t) - s(t)}{\Delta t}.$$
+
+Substituting and simplifying, we arrive at:
+
+$$s(t + \Delta t) \approx 2s(t) - s(t - \Delta t) + s''(t - \Delta t)\Delta^2t$$
+
+\begin{code}
+s'' t = (-10)
+dt = 0.01
+s t | trace (show t) False = undefined
+s t 
+  | t <= 0 = 100
+  | otherwise = 2 * (s (t - dt)) - (s (t - 2 * dt)) + (s'' (t - dt)) * dt ** 2
+\end{code}
+
+\begin{code}
+q'' t = (-10)
+q t1 t2 = 2 * t1 - t2 + (q'' t1) * dt**2
+\end{code}
 
 We should read the following signature as a function that accepts a
 Center vector (corresponding to the initial condition), a time (at
@@ -258,7 +298,7 @@ pos cs = posTerm .+ accTerm
   where c = head cs
         s'' = pos'' c
         n = length cs
-        [oneBack, twoBack] = drop (n - 2) cs
+        [twoBack, oneBack] = drop (n - 2) cs
         twoAgo = fromIntegral n - 2
         posTerm = (2 .* oneBack) .- twoBack
         accTerm = (1 .* (s'' twoAgo))
