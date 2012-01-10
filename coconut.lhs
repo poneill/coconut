@@ -1,11 +1,21 @@
+\documentclass{article}
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
+\DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
+\newcommand{\ignore}[1]{}
+\usepackage{verbatim}
+\title{A model for border cell migration in \textit{Drosophila}}
+\author{Patrick O'Neil}
+\begin{document}
+\maketitle{}
 This file documents the first prototype of a model for border cell
-migration in Drosophila.  We elect to model the border cell \cluster as
-a rigid homogenous spherical mass in a ligand gradient.  The cluster
-possesses ligand receptor nodes on its boundary which exert forces
-proportional to the bound ligand fraction and normal to the surface.
-Additionally, we assume that the motive force is driven by a forcing
-function that models the saturation/desensitization dynamics of the
-receptor.
+migration in \textit{Drosophila}.  We elect to model the border cell
+cluster as a rigid homogenous spherical mass in a ligand gradient.
+The cluster possesses ligand receptor nodes on its boundary which
+exert forces proportional to the bound ligand fraction and normal to
+the surface.  Additionally, we assume that the motive force is driven
+by a forcing function that models the saturation/desensitization
+dynamics of the receptor.
 
 Let us begin by sketching a vector type which will allow us to
 simplify expressions later on.
@@ -157,7 +167,7 @@ forceOnCenter c t = foldl1 (.+) [forceFrom i | i <- nodeList]
 
 
 Finally we can write the expression for the acceleration on the center
-at time t:
+at time \textit{t}:
 
 \begin{code}
 pos'' :: Center -> Time -> Acceleration
@@ -210,3 +220,4 @@ pos cs = posTerm .+ accTerm
         posTerm = (2 .* oneBack) .- twoBack
         accTerm = (1 .* (s'' twoAgo))
 \end{code}
+\end{document}
