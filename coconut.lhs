@@ -98,8 +98,9 @@ equilibrium constant K, so let
 Next we define a forcing function f which describes the force exerted
 by the ith node as a function of time:
 
+> timestep = 0.001
 > f :: BoundFraction -> Time -> Float
-> f bf t = bf * (1 - cos(bf * t))
+> f bf t = bf * (1 - cos(bf * t * timestep))
 
 > ithForce :: Center -> Index -> Time -> Vector
 > ithForce c i t = (f (ri v i) t) .* theta i 
@@ -133,8 +134,30 @@ which we wish to know the position of the center) and a timestep, and
 returns a center vector describing the position of the center at the
 desired time.
 
-> pos :: Center -> Time -> Float -> Center
-> pos c 0 dt = c
-> pos c t dt = (2 .* s (t - dt)) .- (s (t - 2 * dt)) .+ ((dt**2) .* (s'' (t - 2 * dt)))
->   where s   = \t -> pos c t dt
+> posRef :: Center -> Time -> Float -> Center
+> posRef c t dt 
+>   | t == 0 = c
+>   | t == dt = c
+>   | otherwise  =  posTerm .+ accTerm
+>   where s   = \t -> posRef c t dt
 >         s'' = pos'' c
+>         posTerm = (2 .* s (t - dt)) .- (s (t - 2 * dt))
+>         accTerm = ((dt**2) .* (s'' (t - 2 * dt)))
+
+Or we can think of pos as a function which accepts the positions at
+the last two time steps and returns the position at the current
+timestep.  Note that the timestep is implicitly given by the indices
+of the list of vectors.  Although we end up discarding almost all of
+the data, the only alternative would be to track the index explicitly
+with another parameter, say by zipping the displacement history with
+the list [0..]
+
+> pos :: [Center] -> Center 
+> pos cs = posTerm .+ accTerm
+>   where c = head cs
+>         s'' = pos'' c
+>         n = length cs
+>         [oneBack, twoBack] = drop (n - 2) cs
+>         twoAgo = fromIntegral n - 2
+>         posTerm = (2 .* oneBack) .- twoBack
+>         accTerm = (1 .* (s'' twoAgo))
