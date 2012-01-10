@@ -30,13 +30,24 @@ of the border cell complex is governed by three chemoattractant
 molecules expressed by the oocyte, which bind to tyrosine kinase
 receptors in the border cells and induce actin polymerization,
 generating protrusions which gain purchase against the tightly packed
-nurse cells through adherens junctions.  Border cell migration in
-\textit{Drosophila} is a central model We elect to model the border
-cell cluster as a rigid homogenous spherical mass in a ligand
-gradient.  The cluster possesses ligand receptor nodes on its boundary
-which exert forces proportional to the bound ligand fraction and
-normal to the surface.  Additionally, we assume that the motive force
-is driven by a forcing function that models the
+nurse cells through adherens junctions.  Despite the importance of
+border cell migration in \textit{Drosophila} as a general model for
+cell migration and invasion, little is understood about the specific
+mechanisms of cell motility.  In particular, several questions have
+arisen from observations that the cluster appears to rotate or spin as
+it negotiates the nurse cell gauntlet:
+\begin{enumerate}
+\item What can account for the rotation of the cluster?
+\item Can a model which assumes independence among the border cells
+  explain the observed behavior, or must their efforts be coordinated
+  through a signaling mechanism?
+\end{enumerate}
+ We elect to
+model the border cell cluster as a rigid homogenous spherical mass in
+a ligand gradient.  The cluster possesses ligand receptor nodes on its
+boundary which exert forces proportional to the bound ligand fraction
+and normal to the surface.  Additionally, we assume that the motive
+force is driven by a forcing function that models the
 saturation/desensitization dynamics of the receptor.
 
 \section{Data types and synonyms}
@@ -69,7 +80,7 @@ subtraction,
 (.-) (Vector a b) (Vector c d) = Vector (a - c) (b - d)
 \end{code}
 
-and scalar multiplication.
+and (left) scalar multiplication.
 
 \begin{code}
 (.*) :: Float -> Vector -> Vector 
@@ -151,7 +162,7 @@ For now, let the total receptor capacity of the ith node be constant:
 
 \begin{code}
 rt :: Int -> Float
-rt i = 10
+rt i = 1
 \end{code}
 
 Next, let's define the fraction of ligand bound to a receptor:
