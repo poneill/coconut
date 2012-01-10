@@ -13,12 +13,31 @@ migration in \textit{Drosophila}.  It is both an executable \LaTeX
 file which describes the model, and an executable Haskell file that
 implements the model.
 
-We elect to model the border cell cluster as a rigid homogenous
-spherical mass in a ligand gradient.  The cluster possesses ligand
-receptor nodes on its boundary which exert forces proportional to the
-bound ligand fraction and normal to the surface.  Additionally, we
-assume that the motive force is driven by a forcing function that
-models the saturation/desensitization dynamics of the receptor.
+\section{Background}
+During oogenesis in \textit{Drosophila}, an egg chamber develops from
+a set of 16 germ cells surrounded by approximately 1,000 follicle
+cells.  One of the germ cells differentiates into the oocyte and grows
+to roughly half the total volume of the egg chamber. The other germ
+cells are fated to become \textit{nurse cells}, polyploid cells whose
+ultimate purpose will be to contribute nutrients to the maturing
+oocyte.  During stage 9 of oocyte development, two \textit{polar
+  cells} on the anterior tip of the oocyte induce differentiation of
+neighboring cells into \textit{border cells}, forming a polar
+cell-border cell complex referred to as the \textit{border cell
+  cluster}.  The cluster then delaminates from the epithelium and
+traverses the egg chamber in order to reach the oocyte.  The motility
+of the border cell complex is governed by three chemoattractant
+molecules expressed by the oocyte, which bind to tyrosine kinase
+receptors in the border cells and induce actin polymerization,
+generating protrusions which gain purchase against the tightly packed
+nurse cells through adherens junctions.  Border cell migration in
+\textit{Drosophila} is a central model We elect to model the border
+cell cluster as a rigid homogenous spherical mass in a ligand
+gradient.  The cluster possesses ligand receptor nodes on its boundary
+which exert forces proportional to the bound ligand fraction and
+normal to the surface.  Additionally, we assume that the motive force
+is driven by a forcing function that models the
+saturation/desensitization dynamics of the receptor.
 
 \section{Data types and synonyms}
 In this section we declare some data types and type synonyms that will
