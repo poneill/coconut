@@ -9,13 +9,25 @@
 \begin{document}
 \maketitle{}
 This file documents the first prototype of a model for border cell
-migration in \textit{Drosophila}.  We elect to model the border cell
-cluster as a rigid homogenous spherical mass in a ligand gradient.
-The cluster possesses ligand receptor nodes on its boundary which
-exert forces proportional to the bound ligand fraction and normal to
-the surface.  Additionally, we assume that the motive force is driven
-by a forcing function that models the saturation/desensitization
-dynamics of the receptor.
+migration in \textit{Drosophila}.  It is both an executable \LaTeX
+file which describes the model, and an executable Haskell file that
+implements the model.
+
+We elect to model the border cell cluster as a rigid homogenous
+spherical mass in a ligand gradient.  The cluster possesses ligand
+receptor nodes on its boundary which exert forces proportional to the
+bound ligand fraction and normal to the surface.  Additionally, we
+assume that the motive force is driven by a forcing function that
+models the saturation/desensitization dynamics of the receptor.
+
+\section{Data types and synonyms}
+In this section we declare some data types and type synonyms that will
+aid us later on.  In general, the significance of the code in this
+section should be clear from context later on.  However, the reader
+may wish to note that operators preceded by a \texttt{.}
+(\textit{e.g.} \texttt{(.+)}) just represent the relevant vector
+operations.  This is a quirk of Haskell's type system which the reader
+is urged to ignore.
 
 Let us begin by sketching a vector type which will allow us to
 simplify expressions later on.
@@ -27,21 +39,21 @@ data Vector = Vector Float Float deriving (Eq, Show)
 We define addition,
 
 \begin{code}
-(.+) :: Vector -> Vector -> Vector
+(.+) :: Vector -> Vector -> Vector 
 (.+) (Vector a b) (Vector c d) = Vector (a + c) (b + d)
 \end{code}
 
 subtraction,
 
 \begin{code}
-(.-) :: Vector -> Vector -> Vector
+(.-) :: Vector -> Vector -> Vector 
 (.-) (Vector a b) (Vector c d) = Vector (a - c) (b - d)
 \end{code}
 
 and scalar multiplication.
 
 \begin{code}
-(.*) :: Float -> Vector -> Vector
+(.*) :: Float -> Vector -> Vector 
 (.*) c (Vector a b) = Vector (c * a) (c * b)
 \end{code}
 
@@ -49,13 +61,13 @@ Let's also define a Node type for convenience.  A node is just a
 position:
 
 \begin{code}
-type Index = Int
-data Node = Node Vector
+type Index = Int 
+data Node = Node Vector 
 type Nodes = [Node]
 \end{code}
 
 We will often be referring to the center of the cluster, and may wish
-to designate it by a type synonym:  
+to designate it by a type synonym:
 
 \begin{code}
 type Center = Vector
@@ -64,13 +76,14 @@ type Center = Vector
 Let's also define some type synonyms for clarity and mnemonic ease:
 
 \begin{code}
-type BoundFraction = Float
-type Time = Float
+type BoundFraction = Float 
+type Time = Float 
 type Force = Vector
-type Mass = Float
+type Mass = Float 
 type Acceleration = Vector
 \end{code}
 
+\section{Model Definition}
 We begin the modeling proper by defining the ligand concentration as a
 function of position.  For now, let us assume that that the ligand
 concentration is a simple linear function of displacement in the y
