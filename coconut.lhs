@@ -1,54 +1,58 @@
 \documentclass{article}
 \usepackage{fancyvrb}
+\usepackage{graphicx}
 \DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
 \DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
 \newcommand{\ignore}[1]{}
 \usepackage{verbatim}
-\title{A model for border cell migration in \textit{Drosophila}}
-\author{Patrick O'Neil}
+\title{Sketch of a model for border cell migration in \textit{Drosophila}}
 \begin{document}
 \maketitle{}
 This file documents the first prototype of a model for border cell
-migration in \textit{Drosophila}.  It is both an executable \LaTeX
+migration in \textit{Drosophila}.  It is both an executable \LaTeX 
 file which describes the model, and an executable Haskell file that
 implements the model.
 
 \section{Background}
+In lieu of a reference section, let me mention that everything in this section
+(except the mistakes) is cribbed from various papers by MSG and
+Montell lab.  
+
 During oogenesis in \textit{Drosophila}, an egg chamber develops from
 a set of 16 germ cells surrounded by approximately 1,000 follicle
 cells.  One of the germ cells differentiates into the oocyte and grows
 to roughly half the total volume of the egg chamber. The other germ
 cells are fated to become \textit{nurse cells}, polyploid cells whose
-ultimate purpose will be to contribute nutrients to the maturing
-oocyte.  During stage 9 of oocyte development, two \textit{polar
-  cells} on the anterior tip of the oocyte induce differentiation of
-neighboring cells into \textit{border cells}, forming a polar
-cell-border cell complex referred to as the \textit{border cell
-  cluster}.  The cluster then delaminates from the epithelium and
-traverses the egg chamber in order to reach the oocyte.  The motility
-of the border cell complex is governed by three chemoattractant
-molecules expressed by the oocyte, which bind to tyrosine kinase
-receptors in the border cells and induce actin polymerization,
-generating protrusions which gain purchase against the tightly packed
-nurse cells through adherens junctions.  Despite the importance of
-border cell migration in \textit{Drosophila} as a general model for
-cell migration and invasion, little is understood about the specific
-mechanisms of cell motility.  In particular, several questions have
-arisen from observations that the cluster appears to rotate or spin as
-it negotiates the nurse cell gauntlet:
+ultimate purpose will be to contribute ngantletutrients to the
+maturing oocyte.  During stage 9 of oocyte development, two
+\textit{polar cells} on the anterior tip of the oocyte induce
+differentiation of neighboring cells into \textit{border cells},
+forming a polar cell-border cell complex referred to as the
+\textit{border cell cluster}.  The cluster then delaminates from the
+epithelium and traverses the egg chamber in order to reach the oocyte.
+The motility of the border cell complex is governed by three
+chemoattractant molecules expressed by the oocyte which bind to
+tyrosine kinase receptors in the border cells and induce actin
+polymerization, generating protrusions which gain purchase against the
+tightly packed nurse cells via adherens junctions.  Despite the
+importance of border cell migration in \textit{Drosophila} as a
+general model for cell migration and invasion events, little is
+understood about the specific mechanisms of cell motility.  In
+particular, several questions have arisen from observations that the
+cluster appears to rotate or spin as it negotiates the nurse cell
+``gantlet''.
 \begin{enumerate}
 \item What can account for the rotation of the cluster?
 \item Can a model which assumes independence among the border cells
   explain the observed behavior, or must their efforts be coordinated
   through a signaling mechanism?
 \end{enumerate}
- We elect to
-model the border cell cluster as a rigid homogenous spherical mass in
-a ligand gradient.  The cluster possesses ligand receptor nodes on its
-boundary which exert forces proportional to the bound ligand fraction
-and normal to the surface.  Additionally, we assume that the motive
-force is driven by a forcing function that models the
-saturation/desensitization dynamics of the receptor.
+We first elect to model the border cell cluster as a rigid homogenous
+spherical mass in a ligand gradient.  The cluster possesses ligand
+receptor nodes on its boundary which exert forces proportional to the
+bound ligand fraction and normal to the surface.  Additionally, we
+assume that the motive force is driven by a forcing function that
+models the saturation/desensitization dynamics of the receptor.
 
 \section{Data types and synonyms}
 In this section we declare some data types and type synonyms that will
@@ -67,7 +71,9 @@ import Debug.Trace
 \end{code}
 
 \begin{code}
-data Vector = Vector Float Float deriving (Eq, Show)
+data Vector = Vector { getX :: Float 
+                     , getY :: Float
+                     } deriving (Eq, Show)
 \end{code}
 
 We define addition,
@@ -91,9 +97,14 @@ and (left) scalar multiplication.
 (.*) c (Vector a b) = Vector (c * a) (c * b)
 \end{code}
 
+We might as well have an inner product as well:
+\begin{code}
+(.*.) :: Vector -> Vector -> Float
+(.*.) (Vector x y) (Vector x' y') = x * x' + y * y'
+\end{code}
 \begin{code}
 norm :: Vector -> Float
-norm (Vector x y) = sqrt (x ** 2 + y ** 2)
+norm v = v .*. v
 \end{code}
 Let's also define a Node type for convenience.  A node is just a
 position:
@@ -127,7 +138,7 @@ type Acceleration = Vector
 We begin the modeling proper by defining the ligand concentration as a
 function of position.  For now, let us assume that that the ligand
 concentration is a simple function of distance from the point (10,10).
-This clearly biologically implausible, but will be tolerated for now
+This is biologically doubtful, but will be tolerated for now
 in the interest in getting the model up and running.
 
 \begin{code}
@@ -235,11 +246,12 @@ pos'' c t = (1/m) .* (forceOnCenter c t)
 where m is the mass of the cluster:
 
 \begin{code}
-m = 100
+m = 1
 \end{code}
 
+
 \subsection{Iteration}
-Lastly let us write a simple step function that updates the
+Lastly let us write a  step function that updates the
 displacement of the center of the cluster over a small timestep.
 Consider that we must describe the position of the cluster $s(t)$ as a
 function of time, given the acceleration function $s''(t)$.  We assume
@@ -271,10 +283,10 @@ function of the $t$th and $t - \Delta t$th positions and the $t +
 Let's summarize the model so far.  We have described the acceleration
 on the cluster as a function of position and time.  Formally, we may write:
 
-$$a(\mathbf{x},t) = \frac{1}{m}\displaystyle\sum{i=1}^n\mathbf{g}(\mathbf{u}_i,t)$$
+$$a(\mathbf{x},t) = \frac{1}{m}\displaystyle\sum_{i=1}^n\mathbf{g}(\mathbf{u}_i,t)$$
 
 where $m$ is the cluster mass and $\mathbf{g}(\mathbf{u}_i,t)$ is the force due
-to the $i$th node at time $t$.  In turn, $g$ is defined as:
+to the $i$th node at time $t$.\footnote{(The function name $f$ having already been taken.)}  In turn, $g$ is defined as:
 
 $$\mathbf{g}(r_i(\mathbf{u}),t) = f(\mathbf{u},t)\mathbf{n}$$
 
@@ -334,5 +346,104 @@ pos cs = cs ++ [posTerm .+ accTerm]
 
 While there are further gains in optimization to be had here, they
 need not detain us at the moment.
+
+\section{Model performance}
+
+First let's address the first question posed in the introduction and
+ask whether the current model is capable of exhibiting rotation.
+Recall from the last section that the acceleration on the cluster is
+the sum of the accelerations due to each node, each of which are
+normal to the surface of the cluster.  If we resolve each acceleration
+vector into its normal and tangent components, the tangent component
+in every case will be the zero vector, hence no rotation can occur.
+Finally, note that this result is independent of the placement of the
+nodes on the cluster boundary.
+
+\begin{code}
+c = Vector 0 0
+history = iterate pos [c, c]
+\end{code}
+
+Since the entire model is symmetric with respect to the axis $y = x$,
+we may analyze the kinematics with respect to that axis.  Let us
+consider the first 5000 iterations and recover the displacements:
+
+\begin{code}
+hs = history !! 5000
+ps =  map norm hs
+\end{code}
+
+Next we recover an approximation to the velocity profile:
+
+\begin{code}
+vs = zipWith (-) (tail ps)  ps
+\end{code}
+
+and finally, we can compute the acceleration in two different ways in
+order to perform a sanity check:
+\begin{code}
+as1 = zipWith (-) vs (tail vs) 
+as2 = map ( (/ m) . proj . (uncurry forceOnCenter)) $ zip hs [0..]
+  where proj = (.*.) (Vector 1 1)
+\end{code}
+
+Figure \ref{fig:1} depicts the result of a sample run, in which the
+cluster begins at the origin and migrates toward the source of the
+chemoattractant at (10,10).  Position, velocity and acceleration are
+depicted, with position scaled down by a factor of 10:
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[scale=.65]{firstrun.png}
+  \caption{Sample run}
+  \label{fig:1}
+\end{figure}
+
+Several features warrant mention here.  Most strikingly, model does
+not reach a steady state in which the cluster is localized to the
+chemoattractant source, but instead ``slingshots" the cluster out to
+infinity.  This undesirable behavior is no doubt due to the definition
+of the ligand concentration function and its singularity at (10,10),
+compounded by the numerical error of the simulation method.
+Variation of the free parameters (\textit{viz} mass, radius, timestep) do
+not seem to change this story significantly.
+
+\section{Future Directions}
+The first model seems to leave several features to be desired.  Most
+notably, the impossibility of cluster rotation comes as a serious
+drawback.  Other considerations can be divided roughly into three
+areas of concern: the physical configuration of the cluster, the
+nature of the motive force, and the qualities of the surrounding
+medium.  
+
+Regarding the first category, one might wish to revise the assumption
+of infinite rigidity: movies of the migration event seem to reveal
+significant deformation of the cluster as it squeezes through the gaps
+between neighboring nurse cells.  One might instead model the cluster
+as an elastic body with constant volume or surface area, perhaps
+describing the cluster boundary locally as a flexible beam.  To an
+even coarser approximation, the boundary might be modeled as a
+``necklace" of receptors on springs.  (Conceptually, they might as
+well be rigid linkages, but my intuition is that allowing the linkages
+to ``give" a bit by introducing a moderate spring constant would alleviate some of the potential for numerical error.  This is just an unfounded hunch.)
+
+Into the second category of concerns fall questions about the
+assumption that the protrusions are normal to the cluster boundary.  I
+haven't seen much evidence to the contrary in the movies, but it would
+be possible to get at least some rotation out of such a model.
+Perhaps more to the point is the omission of the adhesion dynamics: by
+treating the motive force as a normal vector, we might be missing out
+on torques arising from the asymmetric adhesion of protrusions to
+nurse cell membranes.
+
+Lastly, the prevailing assumptions about the intercellular medium are
+sure candidates for revision in subsequent rounds of model-building.
+Without a viscosity/friction term, the medium approximates an ice
+rink, and the cluster velocity is unbounded.  In fact, the egg chamber
+is probably a better example of ``life at low Reynolds number", in
+which inertial forces are dominated by viscous forces.  Perhaps adding
+a tuning parameter in the difference equation governing the relative
+significance of the acceleration and velocity terms would be the
+cleanest way to begin to address that.
 
 \end{document}
