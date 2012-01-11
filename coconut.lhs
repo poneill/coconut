@@ -91,6 +91,10 @@ and (left) scalar multiplication.
 (.*) c (Vector a b) = Vector (c * a) (c * b)
 \end{code}
 
+\begin{code}
+norm :: Vector -> Float
+norm (Vector x y) = sqrt (x ** 2 + y ** 2)
+\end{code}
 Let's also define a Node type for convenience.  A node is just a
 position:
 
@@ -129,8 +133,9 @@ in the interest in getting the model up and running.
 \begin{code}
 emitterLocation = Vector 10 10
 l :: Vector -> Float
-l (Vector x y) = sqrt ((x - x')**2 + (y - y')**2)
+l (Vector x y) = 1 / (d ** 2)
                  where Vector x' y' = emitterLocation
+                       d = sqrt ((x - x')**2 + (y - y')**2)
 \end{code}
 
 \subsection{Cluster configuration}
@@ -194,7 +199,7 @@ Next we define a forcing function f which describes the force exerted
 by the ith node as a function of time:
 
 \begin{code}
-timestep = 0.001
+timestep = 1
 f :: BoundFraction -> Time -> Float
 f bf t = bf * (1 - cos(bf * t * timestep))
 \end{code}
@@ -230,15 +235,19 @@ pos'' c t = (1/m) .* (forceOnCenter c t)
 where m is the mass of the cluster:
 
 \begin{code}
-m = 1
+m = 100
 \end{code}
 
 \subsection{Iteration}
 Lastly let us write a simple step function that updates the
 displacement of the center of the cluster over a small timestep.
 Consider that we must describe the position of the cluster $s(t)$ as a
-function of time, given the acceleration function $s''(t)$.  To
-motivate our approach, recall that we may write:
+function of time, given the acceleration function $s''(t)$.  We assume
+for now that the displacement of the cluster is determined only by the
+acceleration profile and the initial position.  We assume no damping
+due to friction or viscosity.  
+
+To motivate our approach, recall that we may write:
 
 $$s(t + \Delta t) \approx s(t) + s'(t)\Delta t$$
 
@@ -252,6 +261,39 @@ Substituting and simplifying, we arrive at:
 
 $$s(t + \Delta t) \approx 2s(t) - s(t - \Delta t) + s''(t - \Delta t)\Delta^2t$$
 
+which gives us the $t + \Delta t$ position after the time step as a
+function of the $t$th and $t - \Delta t$th positions and the $t +
+\Delta t$th acceleration value.  
+
+Let's summarize the model so far.  We have described the acceleration
+on the cluster as a function of position and time.  Formally, we may write:
+
+$$a(\mathbf{x},t) = \frac{1}{m}\displaystyle\sum{i=1}^n\mathbf{g}(\mathbf{u}_i,t)$$
+
+where $m$ is the cluster mass and $\mathbf{g}(\mathbf{u}_i,t)$ is the force due
+to the $i$th node at time $t$.  In turn, $g$ is defined as:
+
+$$\mathbf{g}(r_i(\mathbf{u}),t) = f(\mathbf{u},t)\mathbf{n}$$
+
+where $r_i$ gives the bound fraction of ligand at the point
+$\mathbf{u}$, $\mathbf{n}$ is the normal vector to the cluster at
+$\mathbf{u}$, and $f$ is a forcing function meant to model the
+periodic protrusion and relaxation of the polymerized actin.  If we
+assume that the reaction is at equilibrium then, after some
+manipulation of the mass action law, we can express the bound fraction
+at position $\mathbf{u}$ as
+
+$$r_i(\mathbf{u}) = \frac{L(\mathbf{u})R_{it}}{L(\mathbf{u}) + K}$$
+
+  where $R_{it}$ is the receptor total at the node, and $K$ is the
+  equilibrium constant for the ligand binding reaction.  
+
+  The unit normal vector $\mathbf{n}$ is just:
+
+  $$\mathbf{n}(\mathbf{u}) = \frac{\mathbf{u} - \mathbf{c}}{R}$$
+  
+  where $\mathbf{c}$ is the position of the center of the cluster and
+  $R$ is its radius.
 \begin{code}
 s'' t = (-10)
 dt = 0.01
@@ -293,8 +335,8 @@ with another parameter, say by zipping the displacement history with
 the list [0..]
 
 \begin{code}
-pos :: [Center] -> Center 
-pos cs = posTerm .+ accTerm
+pos :: [Center] -> [Center]
+pos cs = cs ++ [posTerm .+ accTerm]
   where c = head cs
         s'' = pos'' c
         n = length cs
@@ -303,4 +345,10 @@ pos cs = posTerm .+ accTerm
         posTerm = (2 .* oneBack) .- twoBack
         accTerm = (1 .* (s'' twoAgo))
 \end{code}
+
+
+step :: Center -> [Center]
+step c = iterate pos' [c, c]
+  where pos' cs = cs ++ [pos cs]
+
 \end{document}
