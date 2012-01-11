@@ -259,7 +259,10 @@ $$s'(t) \approx \frac{s(t + \Delta t) - s(t)}{\Delta t}.$$
 
 Substituting and simplifying, we arrive at:
 
-$$s(t + \Delta t) \approx 2s(t) - s(t - \Delta t) + s''(t - \Delta t)\Delta^2t$$
+\begin{equation}
+s(t + \Delta t) \approx 2s(t) - s(t - \Delta t) + s''(t - \Delta t)\Delta^2t\label{eq:step}
+\end{equation}
+
 
 which gives us the $t + \Delta t$ position after the time step as a
 function of the $t$th and $t - \Delta t$th positions and the $t +
@@ -294,29 +297,12 @@ $$r_i(\mathbf{u}) = \frac{L(\mathbf{u})R_{it}}{L(\mathbf{u}) + K}$$
   
   where $\mathbf{c}$ is the position of the center of the cluster and
   $R$ is its radius.
-\begin{code}
-s'' t = (-10)
-dt = 0.01
-s t | trace (show t) False = undefined
-s t 
-  | t <= 0 = 100
-  | otherwise = 2 * (s (t - dt)) - (s (t - 2 * dt)) + (s'' (t - dt)) * dt ** 2
-\end{code}
 
-\begin{code}
-q'' t = (-10)
-q t1 t2 = 2 * t1 - t2 + (q'' t1) * dt**2
-\end{code}
+Below is a straightforward implementation of (Eq \ref{eq:step}):
 
-We should read the following signature as a function that accepts a
-Center vector (corresponding to the initial condition), a time (at
-which we wish to know the position of the center) and a timestep, and
-returns a center vector describing the position of the center at the
-desired time.
-
-\begin{code}
-posRef :: Center -> Time -> Float -> Center
-posRef c t dt 
+\begin{example}
+pos :: Center -> Time -> Float -> Center
+pos c t dt 
   | t == 0 = c
   | t == dt = c
   | otherwise  =  posTerm .+ accTerm
@@ -324,15 +310,15 @@ posRef c t dt
         s'' = pos'' c
         posTerm = (2 .* s (t - dt)) .- (s (t - 2 * dt))
         accTerm = ((dt**2) .* (s'' (t - 2 * dt)))
-\end{code}
+\end{example}
 
-Or we can think of pos as a function which accepts the positions at
-the last two time steps and returns the position at the current
-timestep.  Note that the timestep is implicitly given by the indices
-of the list of vectors.  Although we end up discarding almost all of
-the data, the only alternative would be to track the index explicitly
-with another parameter, say by zipping the displacement history with
-the list [0..]
+This implementation, however, suffers exponential slowdown (since $s(t
+- 2 \Delta t)$ will be recomputed from scratch during the computation
+of $s(t - \Delta t)$).  More efficiently, we can think of \texttt{pos}
+as a function which accepts the entire position history as a list and
+returns a new history with the current position appended.  Note that
+the timestep is implicitly given by the indices of the list of
+vectors.  
 
 \begin{code}
 pos :: [Center] -> [Center]
@@ -346,9 +332,7 @@ pos cs = cs ++ [posTerm .+ accTerm]
         accTerm = (1 .* (s'' twoAgo))
 \end{code}
 
-
-step :: Center -> [Center]
-step c = iterate pos' [c, c]
-  where pos' cs = cs ++ [pos cs]
+While there are further gains in optimization to be had here, they
+need not detain us at the moment.
 
 \end{document}
