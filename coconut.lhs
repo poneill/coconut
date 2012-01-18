@@ -4,6 +4,8 @@
 \DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
 \DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
 \newcommand{\ignore}[1]{}
+\newcommand{\deltat}{\Delta t}
+\newcommand{\deltatwo}{\frac{\Delta t}{2}}
 \usepackage{verbatim}
 \title{Sketch of a model for border cell migration in \textit{Drosophila}}
 \begin{document}
@@ -174,7 +176,7 @@ displaced by the length of the radius in the direction of the ith normal vector:
 
 \begin{code}
 ithNode :: Center -> Index -> Vector 
-ithNode c i = c .+ (radius .* (theta i))
+ithNode c i = c .+ (radius .* theta i)
 \end{code}
 
 where
@@ -195,7 +197,7 @@ Next, let's define the fraction of ligand bound to a receptor:
 
 \begin{code}
 ri :: Vector -> Index -> BoundFraction
-ri v i = (lv * (rt i))/(lv + k) 
+ri v i = (lv * rt i)/(lv + k) 
   where lv = l v 
 \end{code}
 
@@ -219,7 +221,7 @@ f bf t = bf * (1 - cos(bf * t * timestep))
 ithForce :: Center -> Index -> Time -> Vector
 ithForce c i t    = magnitude .* direction
   where v         = ithNode c i
-        magnitude = (f (ri v i) t)
+        magnitude = f (ri v i) t
         direction = theta i 
 \end{code}
 
@@ -231,7 +233,7 @@ the cluster:
 \begin{code}
 forceOnCenter :: Center -> Time -> Force
 forceOnCenter c t = foldl1 (.+) [forceFrom i | i <- nodeList]
-  where forceFrom = \i -> ithForce c i t
+  where forceFrom i = ithForce c i t
 \end{code}
 
 
@@ -240,7 +242,7 @@ at time \textit{t}:
 
 \begin{code}
 pos'' :: Center -> Time -> Acceleration
-pos'' c t = (1/m) .* (forceOnCenter c t)
+pos'' c t = (1/m) .* forceOnCenter c t
 \end{code}
 
 where m is the mass of the cluster:
@@ -250,7 +252,7 @@ m = 1
 \end{code}
 
 
-\subsection{Iteration}
+\subsection{Numerical Simulation}
 Lastly let us write a  step function that updates the
 displacement of the center of the cluster over a small timestep.
 Consider that we must describe the position of the cluster $s(t)$ as a
@@ -259,27 +261,50 @@ for now that the displacement of the cluster is determined only by the
 acceleration profile and the initial position.  We assume no damping
 due to friction or viscosity.  
 
-To motivate our approach, recall that we may write:
+To motivate our approach, recall that we may write down the following
+difference equation due to Euler:
 
 $$s(t + \Delta t) \approx s(t) + s'(t)\Delta t$$
 
-for $\Delta t$ sufficiently small.  This, alas, does not help since we
-do not know $s'(t)$ in general.  However we may appeal to the
-definition of the difference quotient and write:
+for $\Delta t$ sufficiently small.  One may observe that in the Euler
+method, the $t + \deltat$th position update is informed by the
+derivative at time $t$, which in general is a poorer guide to the
+behavior of the function over the interval $[t, t + \deltat]$ than the
+derivative at the midpoint of the interval, $t + \deltatwo$.  That is,
+we would like to write instead: 
 
-$$s'(t) \approx \frac{s(t + \Delta t) - s(t)}{\Delta t}.$$
+$$s(t + \Delta t) \approx s(t) + s'(t + \deltatwo)\Delta t$$.
 
-Substituting and simplifying, we arrive at:
+Here, we may fear the spectre of infinite regress, since the
+computation of $s(t + \deltat)$ requires $s'(t + \deltatwo)$, which in
+turn would seem to require division of the timestep by increasingly
+large powers of two.  Instead, we approximate $s'(t + \deltatwo)$ via
+Taylor expansion.  Recall that we may write any (sufficiently
+well-behaved) function $f$ as a power series expanded about an
+arbitrary point $a$\footnote{Provided a positive radius of convergence and the containment of $x$ by that radius, but these details will be happily neglected.}:
 
-\begin{equation}
-s(t + \Delta t) \approx 2s(t) - s(t - \Delta t) + s''(t - \Delta t)\Delta^2t\label{eq:step}
-\end{equation}
+$$f(x) = f(a) + f'(a)(x - a) + \frac{f''(a)(x - a)^2}{2} + \ldots + \frac{f^{(n)}(a)(x - a)^n}{n!}$$
+
+Taylor-expanding $s'$ about $t$ out to one term, we have:
+
+$$s'(t + \deltatwo) = s'(t) + \deltatwo s''(t)$$
+and substitution back into the original difference equation yields:
+$$s(t + \Delta t) \approx s(t) + \deltat [s'(t) + \deltatwo s''(t)].$$
+
+Finally, we can replace $s'(t)$ by the definition of the difference quotient and write:
+
+$$s(t + \Delta t) \approx s(t) + \deltat [[\frac{s(t) - s(t - \deltat)}{\deltat} + \deltatwo s''(t)]$$
+
+which simplifies to:
+
+$$s(t + \Delta t) \approx 2s(t)  - s(t - \deltat) + \frac{\Delta^2 t}{2} s''(t)]$$
 
 
-which gives us the $t + \Delta t$ position after the time step as a
-function of the $t$th and $t - \Delta t$th positions and the $t +
-\Delta t$th acceleration value.  
+giving us the $t + \Delta t$ position after the time step as a
+function of the $t$th and $t - \Delta t$th positions and the $t$th
+acceleration value.
 
+\subsection{Summary of Model Definition}
 Let's summarize the model so far.  We have described the acceleration
 on the cluster as a function of position and time.  Formally, we may write:
 
@@ -321,7 +346,7 @@ pos c t dt
   where s   = \t -> posRef c t dt
         s'' = pos'' c
         posTerm = (2 .* s (t - dt)) .- (s (t - 2 * dt))
-        accTerm = ((dt**2) .* (s'' (t - 2 * dt)))
+        accTerm = ((dt**2/2) .* (s'' (t - 1 * dt)))
 \end{example}
 
 This implementation, however, suffers exponential slowdown (since $s(t
@@ -341,7 +366,7 @@ pos cs = cs ++ [posTerm .+ accTerm]
         [twoBack, oneBack] = drop (n - 2) cs
         twoAgo = fromIntegral n - 2
         posTerm = (2 .* oneBack) .- twoBack
-        accTerm = (1 .* (s'' twoAgo))
+        accTerm = 1 .* s'' twoAgo
 \end{code}
 
 While there are further gains in optimization to be had here, they
@@ -383,7 +408,7 @@ and finally, we can compute the acceleration in two different ways in
 order to perform a sanity check:
 \begin{code}
 as1 = zipWith (-) vs (tail vs) 
-as2 = map ( (/ m) . proj . (uncurry forceOnCenter)) $ zip hs [0..]
+as2 = map ( (/ m) . proj . uncurry forceOnCenter) $ zip hs [0..]
   where proj = (.*.) (Vector 1 1)
 \end{code}
 
