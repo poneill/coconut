@@ -106,7 +106,7 @@ We might as well have an inner product as well:
 \end{code}
 \begin{code}
 norm :: Vector -> Float
-norm v = v .*. v
+norm v = sqrt $ v .*. v
 \end{code}
 Let's also define a Node type for convenience.  A node is just a
 position:
@@ -144,7 +144,7 @@ This is biologically doubtful, but will be tolerated for now
 in the interest in getting the model up and running.
 
 \begin{code}
-emitterLocation = Vector 10 10
+emitterLocation = Vector 20 20
 l :: Vector -> Float
 l (Vector x y) = 1 / (d ** 2)
                  where Vector x' y' = emitterLocation
@@ -214,7 +214,8 @@ by the ith node as a function of time:
 \begin{code}
 timestep = 1
 f :: BoundFraction -> Time -> Float
-f bf t = bf * (1 - cos(bf * t * timestep))
+--f bf t = bf * (1 - cos(bf * t * timestep)) debugging
+f bf t = bf
 \end{code}
 
 \begin{code}
@@ -346,7 +347,7 @@ pos c t dt
   where s   = \t -> posRef c t dt
         s'' = pos'' c
         posTerm = (2 .* s (t - dt)) .- (s (t - 2 * dt))
-        accTerm = ((dt**2/2) .* (s'' (t - 1 * dt)))
+        accTerm = ((dt**2/2) .* (s'' (t - 1 * dt))) --NB computing t from t - 1
 \end{example}
 
 This implementation, however, suffers exponential slowdown (since $s(t
@@ -361,12 +362,12 @@ vectors.
 pos :: [Center] -> [Center]
 pos cs = cs ++ [posTerm .+ accTerm]
   where c = head cs
-        s'' = pos'' c
+--        s'' = pos'' c
         n = length cs
         [twoBack, oneBack] = drop (n - 2) cs
-        twoAgo = fromIntegral n - 2
+        oneAgo = fromIntegral n - 1
         posTerm = (2 .* oneBack) .- twoBack
-        accTerm = 1 .* s'' twoAgo
+        accTerm = (1/2) .* pos'' oneBack oneAgo
 \end{code}
 
 While there are further gains in optimization to be had here, they
@@ -385,8 +386,16 @@ Finally, note that this result is independent of the placement of the
 nodes on the cluster boundary.
 
 \begin{code}
+iterateN :: Int -> (a -> a) -> a -> a 
+iterateN 0 f x = x
+iterateN n f x = iterateN (n - 1) f (f x)
+
+
+\end{code}
+
+\begin{code}
 c = Vector 0 0
-history = iterate pos [c, c]
+history = iterateN 10000 pos [c, c]
 \end{code}
 
 Since the entire model is symmetric with respect to the axis $y = x$,
@@ -394,8 +403,7 @@ we may analyze the kinematics with respect to that axis.  Let us
 consider the first 5000 iterations and recover the displacements:
 
 \begin{code}
-hs = history !! 5000
-ps =  map norm hs
+ps =  map norm history
 \end{code}
 
 Next we recover an approximation to the velocity profile:
@@ -408,7 +416,7 @@ and finally, we can compute the acceleration in two different ways in
 order to perform a sanity check:
 \begin{code}
 as1 = zipWith (-) vs (tail vs) 
-as2 = map ( (/ m) . proj . uncurry forceOnCenter) $ zip hs [0..]
+as2 = map ( (/ m) . proj . uncurry forceOnCenter) $ zip history [0..]
   where proj = (.*.) (Vector 1 1)
 \end{code}
 
