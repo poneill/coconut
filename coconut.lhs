@@ -1,11 +1,13 @@
 \documentclass{article}
 \usepackage{fancyvrb}
 \usepackage{graphicx}
+\usepackage{amsmath}
 \DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
 \DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
 \newcommand{\ignore}[1]{}
 \newcommand{\deltat}{\Delta t}
 \newcommand{\deltatwo}{\frac{\Delta t}{2}}
+\newcommand{\deltafour}{\frac{\Delta t}{4}}
 \usepackage{verbatim}
 \title{Sketch of a model for border cell migration in \textit{Drosophila}}
 \begin{document}
@@ -422,7 +424,7 @@ as2 = map ( (/ m) . proj . uncurry forceOnCenter) $ zip history [0..]
 
 Figure \ref{fig:1} depicts the result of a sample run, in which the
 cluster begins at the origin and migrates toward the source of the
-chemoattractant at (10,10).  Position, velocity and acceleration are
+chemoattractant at (20,20).  Position, velocity and acceleration are
 depicted, with position scaled down by a factor of 10:
 
 \begin{figure}[ht]
@@ -478,5 +480,39 @@ which inertial forces are dominated by viscous forces.  Perhaps adding
 a tuning parameter in the difference equation governing the relative
 significance of the acceleration and velocity terms would be the
 cleanest way to begin to address that.
+
+\section{Damping}
+To address the concern posed in the preceding paragraph concerning the
+neglect of viscosity, we modify the equations of motion given in the
+last section.  Formally, we have:
+
+\begin{equation}
+  \label{eq:dampedAnalytic}
+  s''(t) = f(t,s(t)) - k s'(t)
+\end{equation}
+which captures the intuition that the cluster should experience a
+frictional force proportional to its velocity in the direction
+opposite its travel.  We may represent this numerically as follows:
+\begin{align*}
+s(t + \Delta t) \approx& s(t) + s'(t + \deltatwo)\Delta t\\
+s'(t + \deltat) \approx& s'(t) + s\prime\prime(t + \deltatwo) \deltat
+\label{eq:damped}
+\end{align*}
+where
+
+$$\prime\prime(t) = f(t,s(t)) - k s'(t)$$
+
+and $k$ has units 1/time.
+Let us now begin to cash this out:
+\begin{align*}
+  s'(t + \deltatwo) \approx& s'(t) + s\prime\prime(t + \deltafour) \deltatwo\\
+  \approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t+\deltafour)) - k s'(t + \deltafour)]\deltatwo\\
+\approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(s'(t) + s\prime\prime(t)\deltafour)]\deltatwo\\
+\approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo\\
+\approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+\frac{s(t) - s(t - \deltat)}{\deltat}\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo\\
+\end{align*}
+and finally we may write:
+$$s(t + \deltat) \approx s(t) + [\frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo]\deltat$$
+
 
 \end{document}
