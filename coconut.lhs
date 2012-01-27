@@ -68,6 +68,10 @@ simplify expressions later on.
 
 \begin{code}
 import Debug.Trace
+import Data.List
+
+argMax :: (Ord b) => (a -> b) -> [a] -> a
+argMax f = foldl1 (\x x' -> if f x' > f x then x' else x)
 \end{code}
 
 \begin{code}
@@ -220,7 +224,14 @@ ithForce :: Center -> Index -> Time -> Vector
 ithForce c i t    = magnitude .* direction
   where v         = ithNode c i
         magnitude = (f (ri v i) t)
-        direction = theta i 
+--        direction = theta i 
+        direction = gradient v t
+\end{code}
+
+\begin{code}
+gradient :: Center -> Time -> Vector
+gradient v t = argMax (\dv -> l (v .+dv )) [dv | dv <- [Vector (cos (2 * pi * i / n)) (sin (2 * pi * i / n)) | i <- [0..n - 1]]]
+  where n = 64
 \end{code}
 
 \subsection{Force balancing} 
