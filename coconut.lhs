@@ -485,7 +485,7 @@ Lastly, the prevailing assumptions about the intercellular medium are
 sure candidates for revision in subsequent rounds of model-building.
 Without a viscosity/friction term, the medium approximates an ice
 rink, and the cluster velocity is unbounded.  In fact, the egg chamber
-is probably a better example of ``life at low Reynolds number", in
+is probably a better example of life at low Reynolds number, in
 which inertial forces are dominated by viscous forces.  Perhaps adding
 a tuning parameter in the difference equation governing the relative
 significance of the acceleration and velocity terms would be the
@@ -522,7 +522,33 @@ Let us now begin to cash this out:
 \approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+\frac{s(t) - s(t - \deltat)}{\deltat}\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo\\
 \end{align*}
 and finally we may write:
-$$s(t + \deltat) \approx s(t) + [\frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo]\deltat$$
+$$s(t + \deltat) \approx s(t) + [s'(t) + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo]\deltat$$
+where 
+\begin{align*}
+  s'(t) =& \frac{s(t) - s(t - \deltat)}{\deltat}\\
+  s''(t) =& f(t,s(t)) - k \frac{s(t) - s(t - \deltat)}{\deltat}
+\end{align*}
+We implement the above in Haskell in the following manner:
 
+
+
+\begin{code}
+dampedPos :: [Center] -> [Center] 
+dampedPos cs = cs ++ [posTerm .+ velTerm .+ accTerm .+ dampTerm]
+  where c = head cs
+        n = length cs 
+        [twoBack, oneBack] = drop (n - 2) cs 
+        oneAgo = fromIntegral n - 1
+        dt =1 
+        dc = 0.3
+        sPrime = dt .* (oneBack .- twoBack) 
+        fTerm = pos'' oneBack oneAgo
+        fTerm4 = pos'' (oneBack .+ ((dt/4) .* sPrime)) oneAgo --technically: (oneAgo + dt/4)
+        sDPrime = fTerm .- (dc .* sPrime)
+        posTerm =  oneBack
+        velTerm =  sPrime
+        accTerm =  ((dt**2)/2) .* fTerm4 --note: revise 
+        dampTerm = (- dc) .* (((dt**2/2) .* sPrime) .+ (((dt**3)/8) .* sDPrime))
+\end{code}
 
 \end{document}
