@@ -1,9 +1,13 @@
 \documentclass{article}
 \usepackage{fancyvrb}
 \usepackage{graphicx}
+\usepackage{amsmath}
 \DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small}
 \DefineVerbatimEnvironment{example}{Verbatim}{fontsize=\small}
 \newcommand{\ignore}[1]{}
+\newcommand{\deltat}{\Delta t}
+\newcommand{\deltatwo}{\frac{\Delta t}{2}}
+\newcommand{\deltafour}{\frac{\Delta t}{4}}
 \usepackage{verbatim}
 \title{Sketch of a model for border cell migration in \textit{Drosophila}}
 \begin{document}
@@ -108,7 +112,7 @@ We might as well have an inner product as well:
 \end{code}
 \begin{code}
 norm :: Vector -> Float
-norm v = v .*. v
+norm v = sqrt $ v .*. v
 \end{code}
 Let's also define a Node type for convenience.  A node is just a
 position:
@@ -146,7 +150,7 @@ This is biologically doubtful, but will be tolerated for now
 in the interest in getting the model up and running.
 
 \begin{code}
-emitterLocation = Vector 10 10
+emitterLocation = Vector 20 20
 l :: Vector -> Float
 l (Vector x y) = 1 / (d ** 2)
                  where Vector x' y' = emitterLocation
@@ -178,7 +182,7 @@ displaced by the length of the radius in the direction of the ith normal vector:
 
 \begin{code}
 ithNode :: Center -> Index -> Vector 
-ithNode c i = c .+ (radius .* (theta i))
+ithNode c i = c .+ (radius .* theta i)
 \end{code}
 
 where
@@ -199,7 +203,7 @@ Next, let's define the fraction of ligand bound to a receptor:
 
 \begin{code}
 ri :: Vector -> Index -> BoundFraction
-ri v i = (lv * (rt i))/(lv + k) 
+ri v i = (lv * rt i)/(lv + k) 
   where lv = l v 
 \end{code}
 
@@ -216,7 +220,8 @@ by the ith node as a function of time:
 \begin{code}
 timestep = 1
 f :: BoundFraction -> Time -> Float
-f bf t = bf * (1 - cos(bf * t * timestep))
+--f bf t = bf * (1 - cos(bf * t * timestep)) debugging
+f bf t = bf
 \end{code}
 
 \begin{code}
@@ -224,7 +229,6 @@ ithForce :: Center -> Index -> Time -> Vector
 ithForce c i t    = magnitude .* direction
   where v         = ithNode c i
         magnitude = (f (ri v i) t)
---        direction = theta i 
         direction = gradient v t
 \end{code}
 
@@ -242,7 +246,7 @@ the cluster:
 \begin{code}
 forceOnCenter :: Center -> Time -> Force
 forceOnCenter c t = foldl1 (.+) [forceFrom i | i <- nodeList]
-  where forceFrom = \i -> ithForce c i t
+  where forceFrom i = ithForce c i t
 \end{code}
 
 
@@ -251,7 +255,7 @@ at time \textit{t}:
 
 \begin{code}
 pos'' :: Center -> Time -> Acceleration
-pos'' c t = (1/m) .* (forceOnCenter c t)
+pos'' c t = (1/m) .* forceOnCenter c t
 \end{code}
 
 where m is the mass of the cluster:
@@ -261,7 +265,7 @@ m = 1
 \end{code}
 
 
-\subsection{Iteration}
+\subsection{Numerical Simulation}
 Lastly let us write a  step function that updates the
 displacement of the center of the cluster over a small timestep.
 Consider that we must describe the position of the cluster $s(t)$ as a
@@ -270,27 +274,50 @@ for now that the displacement of the cluster is determined only by the
 acceleration profile and the initial position.  We assume no damping
 due to friction or viscosity.  
 
-To motivate our approach, recall that we may write:
+To motivate our approach, recall that we may write down the following
+difference equation due to Euler:
 
 $$s(t + \Delta t) \approx s(t) + s'(t)\Delta t$$
 
-for $\Delta t$ sufficiently small.  This, alas, does not help since we
-do not know $s'(t)$ in general.  However we may appeal to the
-definition of the difference quotient and write:
+for $\Delta t$ sufficiently small.  One may observe that in the Euler
+method, the $t + \deltat$th position update is informed by the
+derivative at time $t$, which in general is a poorer guide to the
+behavior of the function over the interval $[t, t + \deltat]$ than the
+derivative at the midpoint of the interval, $t + \deltatwo$.  That is,
+we would like to write instead: 
 
-$$s'(t) \approx \frac{s(t + \Delta t) - s(t)}{\Delta t}.$$
+$$s(t + \Delta t) \approx s(t) + s'(t + \deltatwo)\Delta t$$.
 
-Substituting and simplifying, we arrive at:
+Here, we may fear the spectre of infinite regress, since the
+computation of $s(t + \deltat)$ requires $s'(t + \deltatwo)$, which in
+turn would seem to require division of the timestep by increasingly
+large powers of two.  Instead, we approximate $s'(t + \deltatwo)$ via
+Taylor expansion.  Recall that we may write any (sufficiently
+well-behaved) function $f$ as a power series expanded about an
+arbitrary point $a$\footnote{Provided a positive radius of convergence and the containment of $x$ by that radius, but these details will be happily neglected.}:
 
-\begin{equation}
-s(t + \Delta t) \approx 2s(t) - s(t - \Delta t) + s''(t - \Delta t)\Delta^2t\label{eq:step}
-\end{equation}
+$$f(x) = f(a) + f'(a)(x - a) + \frac{f''(a)(x - a)^2}{2} + \ldots + \frac{f^{(n)}(a)(x - a)^n}{n!}$$
+
+Taylor-expanding $s'$ about $t$ out to one term, we have:
+
+$$s'(t + \deltatwo) = s'(t) + \deltatwo s''(t)$$
+and substitution back into the original difference equation yields:
+$$s(t + \Delta t) \approx s(t) + \deltat [s'(t) + \deltatwo s''(t)].$$
+
+Finally, we can replace $s'(t)$ by the definition of the difference quotient and write:
+
+$$s(t + \Delta t) \approx s(t) + \deltat [[\frac{s(t) - s(t - \deltat)}{\deltat} + \deltatwo s''(t)]$$
+
+which simplifies to:
+
+$$s(t + \Delta t) \approx 2s(t)  - s(t - \deltat) + \frac{\Delta^2 t}{2} s''(t)]$$
 
 
-which gives us the $t + \Delta t$ position after the time step as a
-function of the $t$th and $t - \Delta t$th positions and the $t +
-\Delta t$th acceleration value.  
+giving us the $t + \Delta t$ position after the time step as a
+function of the $t$th and $t - \Delta t$th positions and the $t$th
+acceleration value.
 
+\subsection{Summary of Model Definition}
 Let's summarize the model so far.  We have described the acceleration
 on the cluster as a function of position and time.  Formally, we may write:
 
@@ -332,7 +359,7 @@ pos c t dt
   where s   = \t -> posRef c t dt
         s'' = pos'' c
         posTerm = (2 .* s (t - dt)) .- (s (t - 2 * dt))
-        accTerm = ((dt**2) .* (s'' (t - 2 * dt)))
+        accTerm = ((dt**2/2) .* (s'' (t - 1 * dt))) --NB computing t from t - 1
 \end{example}
 
 This implementation, however, suffers exponential slowdown (since $s(t
@@ -347,12 +374,12 @@ vectors.
 pos :: [Center] -> [Center]
 pos cs = cs ++ [posTerm .+ accTerm]
   where c = head cs
-        s'' = pos'' c
+--        s'' = pos'' c
         n = length cs
         [twoBack, oneBack] = drop (n - 2) cs
-        twoAgo = fromIntegral n - 2
+        oneAgo = fromIntegral n - 1
         posTerm = (2 .* oneBack) .- twoBack
-        accTerm = (1 .* (s'' twoAgo))
+        accTerm = (1/2) .* pos'' oneBack oneAgo
 \end{code}
 
 While there are further gains in optimization to be had here, they
@@ -371,8 +398,16 @@ Finally, note that this result is independent of the placement of the
 nodes on the cluster boundary.
 
 \begin{code}
+iterateN :: Int -> (a -> a) -> a -> a 
+iterateN 0 f x = x
+iterateN n f x = iterateN (n - 1) f (f x)
+
+
+\end{code}
+
+\begin{code}
 c = Vector 0 0
-history = iterate pos [c, c]
+history = iterateN 10000 pos [c, c]
 \end{code}
 
 Since the entire model is symmetric with respect to the axis $y = x$,
@@ -380,8 +415,7 @@ we may analyze the kinematics with respect to that axis.  Let us
 consider the first 5000 iterations and recover the displacements:
 
 \begin{code}
-hs = history !! 5000
-ps =  map norm hs
+ps =  map norm history
 \end{code}
 
 Next we recover an approximation to the velocity profile:
@@ -394,13 +428,13 @@ and finally, we can compute the acceleration in two different ways in
 order to perform a sanity check:
 \begin{code}
 as1 = zipWith (-) vs (tail vs) 
-as2 = map ( (/ m) . proj . (uncurry forceOnCenter)) $ zip hs [0..]
+as2 = map ( (/ m) . proj . uncurry forceOnCenter) $ zip history [0..]
   where proj = (.*.) (Vector 1 1)
 \end{code}
 
 Figure \ref{fig:1} depicts the result of a sample run, in which the
 cluster begins at the origin and migrates toward the source of the
-chemoattractant at (10,10).  Position, velocity and acceleration are
+chemoattractant at (20,20).  Position, velocity and acceleration are
 depicted, with position scaled down by a factor of 10:
 
 \begin{figure}[ht]
@@ -456,5 +490,39 @@ which inertial forces are dominated by viscous forces.  Perhaps adding
 a tuning parameter in the difference equation governing the relative
 significance of the acceleration and velocity terms would be the
 cleanest way to begin to address that.
+
+\section{Damping}
+To address the concern posed in the preceding paragraph concerning the
+neglect of viscosity, we modify the equations of motion given in the
+last section.  Formally, we have:
+
+\begin{equation}
+  \label{eq:dampedAnalytic}
+  s''(t) = f(t,s(t)) - k s'(t)
+\end{equation}
+which captures the intuition that the cluster should experience a
+frictional force proportional to its velocity in the direction
+opposite its travel.  We may represent this numerically as follows:
+\begin{align*}
+s(t + \Delta t) \approx& s(t) + s'(t + \deltatwo)\Delta t\\
+s'(t + \deltat) \approx& s'(t) + s\prime\prime(t + \deltatwo) \deltat
+\label{eq:damped}
+\end{align*}
+where
+
+$$\prime\prime(t) = f(t,s(t)) - k s'(t)$$
+
+and $k$ has units 1/time.
+Let us now begin to cash this out:
+\begin{align*}
+  s'(t + \deltatwo) \approx& s'(t) + s\prime\prime(t + \deltafour) \deltatwo\\
+  \approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t+\deltafour)) - k s'(t + \deltafour)]\deltatwo\\
+\approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(s'(t) + s\prime\prime(t)\deltafour)]\deltatwo\\
+\approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo\\
+\approx& \frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+\frac{s(t) - s(t - \deltat)}{\deltat}\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo\\
+\end{align*}
+and finally we may write:
+$$s(t + \deltat) \approx s(t) + [\frac{s(t) - s(t - \deltat)}{\deltat} + [f(t+\deltafour,s(t)+s'(t)\deltafour)) - k(\frac{s(t) - s(t - \deltat)}{\deltat} + s\prime\prime(t)\deltafour)]\deltatwo]\deltat$$
+
 
 \end{document}
