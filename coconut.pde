@@ -114,10 +114,11 @@ class Cell {
 	    return new PVector(0,0);
     }
     
-    PVector fFlu(){
-	float r = random(0,1);
-	float theta = random(0,2*pi);
-	return new PVector(r * cos(theta), r * sin(theta));
+    PVector fFlu2(){
+	float u1 = random(0,1);
+	float u2 = random(0,1);
+	float k = sqrt(-2*log(u2));
+	return new PVector(k * cos(u1), k * sin(u1));
     }
 
     PVector sumFmig(){
