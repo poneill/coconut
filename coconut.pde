@@ -114,7 +114,7 @@ class Cell {
 	    return new PVector(0,0);
     }
     
-    PVector fFlu2(){
+    PVector fFlu(){
 	float u1 = random(0,1);
 	float u2 = random(0,1);
 	float k = sqrt(-2*log(u2));
