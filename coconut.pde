@@ -1,14 +1,14 @@
 float repConst = 1.0;
 float migConst = 1/10.0;
-float fluConst = 0.1;
-float adhConst = 0.0;
+float fluConst = 0.0;
+float adhConst = 0.1;
 
 float radius = 10.0;
 float k = 1.0;
 float epsilon = 0.01;
 float pi = 3.14159;
 ArrayList cells;
-int numCells = 1000;
+int numCells = 20;
 int numMigrants = 20;
 PVector nurseLocation = new PVector(600,400);
 PVector borderLocation = new PVector(200,400);
@@ -23,6 +23,7 @@ class Cell {
     PVector loc;
     float radius;
     int id;
+    PVector v = new PVector(0,0,0);
     boolean migratory;
 
     Cell(float tempX, float tempY, float tempRad, int tempId,
@@ -34,6 +35,7 @@ class Cell {
 	migratory = tempMigratory;
     }
     void move(){
+	v = loc.get();
 	PVector repForce = sumFrep();
 	repForce.mult(repConst);
 	loc.add(repForce);
@@ -46,15 +48,16 @@ class Cell {
 	PVector adhForce = sumFadh();
 	adhForce.mult(adhConst);
 	loc.add(adhForce);
-
 	float tx = constrain(loc.x,xMin,xMax);
 	float ty = constrain(loc.y,yMin,yMax);
 	loc.x = tx;
 	loc.y = ty;
+	v.sub(loc);
+	v.mult(-1);
     }
 
     PVector sumFrep(){
-	PVector total = new PVector(0,0);
+	PVector total = new PVector(0,0,0);
 	for(int i = 0; i < cells.size(); i++){
 	    if(i != id){  //don't add self!
 		Cell j = (Cell) cells.get(i);
@@ -73,7 +76,7 @@ class Cell {
 	    return delta;
 	}
 	else
-	    return new PVector(0.0,0.0);
+	    return new PVector(0.0,0.0,0.0);
     }
 
     PVector fAdh(Cell j){
@@ -85,11 +88,11 @@ class Cell {
 	    return delta;
 	}
 	else
-	    return new PVector(0.0,0.0);
+	    return new PVector(0.0,0.0,0.0);
     }
 
     PVector fMig(Cell j){
-	if(migratory || j.getMigratory()){
+	if(migratory ^ j.getMigratory()){ //logical XOR!
 	    PVector jLoc = j.getLoc();
 	    PVector delta = new PVector (loc.x - j.getLoc().x, 
 					 loc.y - j.getLoc().y);	    
@@ -108,10 +111,10 @@ class Cell {
 				   (dx/(deltaNorm + epsilon)));
 	    }
 	    else
-		return new PVector(0,0);
+		return new PVector(0,0,0);
 	}
 	else
-	    return new PVector(0,0);
+	    return new PVector(0,0,0);
     }
     
     PVector fFlu(){
@@ -122,7 +125,7 @@ class Cell {
     }
 
     PVector sumFmig(){
-	PVector total = new PVector(0,0);
+	PVector total = new PVector(0,0,0);
 	for(int i = 0; i < cells.size(); i++){
 	    if(i != id){  //don't add self!
 		Cell j = (Cell) cells.get(i);
@@ -134,7 +137,7 @@ class Cell {
     }
 
     PVector sumFadh(){
-	PVector total = new PVector(0,0);
+	PVector total = new PVector(0,0,0);
 	for(int i = 0; i < cells.size(); i++){
 	    if(i != id){  //don't add self!
 		Cell j = (Cell) cells.get(i);
@@ -158,6 +161,7 @@ class Cell {
     PVector getLoc()   {return loc;   }
     int getId()   {return id;   }
     boolean getMigratory()   {return migratory;   }
+    PVector getV()   {return v;   }
 }
 
 void setup() 
@@ -187,19 +191,43 @@ void setup()
 }
 int gen = 0;
 Cell c;
+PVector mu = new PVector(0,0,0);
+PVector r;
+PVector angMomentum = new PVector(0,0,0);
+PVector linMomentum = new PVector(0,0,0);
+float energy;
 void draw() 
 {
   background(51);
-  print(gen + "\n");
+  //  print(gen + "\n");
   gen++;
+  
   for (int i = 0; i < cells.size(); i++){
       c = (Cell) cells.get(i);
 //      print("moving cell #" + c.getId() + " i: " + i + "\n");
       c.move();
       c.drawSelf();
 //      print(c.getLoc());
-
-
+      if(c.getMigratory()){
+      mu.add(c.getLoc());
+      }
   }
+  mu.mult(1.0/numCells);
+  angMomentum.set(0.0,0.0,0.0);
+  linMomentum.set(0.0,0.0,0.0);
+  energy = 0;
+  for (int i = 0; i < cells.size(); i++){
+      c = (Cell) cells.get(i);
+      //      print("cell loc: " + c.getLoc()+"\n");
+      //      print("cell velocity: " + c.getV()+"\n");
+      if(c.getMigratory()){
+      r = PVector.sub(c.getLoc(),mu);
+      angMomentum.add(r.cross(c.getV()));
+      linMomentum.add(c.getV());
+      energy += pow((c.getV().mag()),2);
+      }
+  }
+  //  print(momentum.z + "\n");
+  println(linMomentum);
 }
 
