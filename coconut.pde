@@ -8,7 +8,7 @@ float k = 1.0;
 float epsilon = 0.01;
 float pi = 3.14159;
 ArrayList cells;
-int numCells = 20;
+int numCells = 650;
 int numMigrants = 20;
 PVector nurseLocation = new PVector(600,400);
 PVector borderLocation = new PVector(200,400);
@@ -220,14 +220,14 @@ void draw()
       c = (Cell) cells.get(i);
       //      print("cell loc: " + c.getLoc()+"\n");
       //      print("cell velocity: " + c.getV()+"\n");
-      if(c.getMigratory()){
+          if(c.getMigratory()){
       r = PVector.sub(c.getLoc(),mu);
       angMomentum.add(r.cross(c.getV()));
-      linMomentum.add(c.getV());
-      energy += pow((c.getV().mag()),2);
-      }
+      //linMomentum.add(c.getV());
+      // energy += pow((c.getV().mag()),2);
+	  }
   }
-  //  print(momentum.z + "\n");
-  println(linMomentum);
+  print(angMomentum.z + "\n");
+  //println(linMomentum);
 }
 
